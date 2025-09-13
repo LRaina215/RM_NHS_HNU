@@ -27,7 +27,7 @@ def generate_launch_description():
         output='screen',
         name='armor_detector',
         parameters=[
-            '/home/robomaster/zxzzb/src/auto_aim_bringup/config/node_params/armor_detector_params.yaml'
+            '/home/robomaster/shaobing/src/auto_aim_bringup/config/node_params/armor_detector_params.yaml'
         ]
     )
 

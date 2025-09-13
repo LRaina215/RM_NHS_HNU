@@ -13,7 +13,7 @@ from launch_ros.actions import Node
 args_list = [
     DeclareLaunchArgument(
         'robot_type',
-        default_value='sentry_up',
+        default_value='sentry_up', # 选择模式
         description='Robot name',
         choices=[
             "sentry_up", "sentry_down", "infantry"
@@ -49,4 +49,4 @@ def generate_launch_description():
 #
 #     import time
 #     time.sleep(3)
-#     os.system("bash '/home/nv/Desktop/bubble/src/bubble_bringup/script/autostart.sh'")
+#     os.system(" ash '/home/nv/Desktop/bubble/src/bubble_bringup/script/autostart.sh'")

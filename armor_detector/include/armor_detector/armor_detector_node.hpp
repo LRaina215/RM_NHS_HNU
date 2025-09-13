@@ -95,7 +95,7 @@ private:
   std::unique_ptr<Detector> detector_;
 
   //Init enemy color
-  EnemyColor detect_color_;
+  EnemyColor detect_color_ = EnemyColor::RED;
 
   // Pose Solver
   bool use_ba_;
@@ -147,6 +147,9 @@ private:
   image_transport::Publisher binary_img_pub_;
   image_transport::Publisher number_img_pub_;
   image_transport::Publisher result_img_pub_;
+
+  // red_blue_color
+  int color_;
 };
 
 } // namespace fyt::auto_aim

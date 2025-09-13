@@ -60,7 +60,7 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions &options)
   FYT_REGISTER_LOGGER("armor_detector", "~/fyt2024-log", INFO);
   FYT_INFO("armor_detector", "Starting ArmorDetectorNode!");
   // Detector
-  detector_ = initDetector();
+  
 
   // Tricks to make pose more accurate
   use_ba_ = this->declare_parameter("use_ba", true);
@@ -128,8 +128,16 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions &options)
       std::bind(&ArmorDetectorNode::imageCallback, this,
                 std::placeholders::_1));
 
+  // 0820 调整初始化位置（上移动到探测颜色设置前）
+  detector_ = initDetector();
+
+  // 0820
+  this->declare_parameter("detect_color", 0); 
+  color_ = this->get_parameter("detect_color").as_int();
   enemy_color_sub = this->create_subscription<std_msgs::msg::Int32>(
           "red_blue_info", 10, std::bind(&ArmorDetectorNode::enemy_color_callback, this, std::placeholders::_1));
+  
+  // detector_ = initDetector();
 
   // target_sub_ = this->create_subscription<rm_interfaces::msg::Target>(
   //   "armor_solver/target",
@@ -151,26 +159,48 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions &options)
   heartbeat_ = HeartBeatPublisher::create(this);
 }
 
-// getting imu_gimbal_msg --- lgl
+// // getting imu_gimbal_msg --- lgl
+// void ArmorDetectorNode::enemy_color_callback(const std_msgs::msg::Int32::SharedPtr msg)
+// {
+//   RCLCPP_INFO(this->get_logger(), "Received: %d", msg->data);
+//   //this->set_parameter(rclcpp::Parameter("detect_color", msg->data));
+//   setEnemyColor(detect_color_, msg);
+//     // 打印更新后的参数值
+//   //RCLCPP_INFO(this->get_logger(), "Updated detect_color: %d", msg->data);
+// }
+
+// 0820 Change -- set_parameter --> get_parameter 设置读取yaml配置的回调函数
 void ArmorDetectorNode::enemy_color_callback(const std_msgs::msg::Int32::SharedPtr msg)
 {
-  //RCLCPP_INFO(this->get_logger(), "Received: %d", msg->data);
-  //this->set_parameter(rclcpp::Parameter("detect_color", msg->data));
-  setEnemyColor(detect_color_, msg);
-    // 打印更新后的参数值
-  //RCLCPP_INFO(this->get_logger(), "Updated detect_color: %d", msg->data);
+  
+  // RCLCPP_INFO(this->get_logger(), "Received: %d", color_);
+  
+  // 更新detector的颜色设置
+    setEnemyColor(detect_color_, msg);
+  
+  // RCLCPP_INFO(this->get_logger(), "Updated detect_color to: %d", static_cast<int>(detector_->detect_color));
 }
 
+// void ArmorDetectorNode::setEnemyColor(EnemyColor &detect_color, const std_msgs::msg::Int32::SharedPtr &msg)
+// {
+//   ArmorDetectorNode::detect_color_ = (msg->data == 1) ? EnemyColor::RED : EnemyColor::BLUE;
+// }
+
+// 0820 读取yaml配置回调函数对应的设置颜色函数
 void ArmorDetectorNode::setEnemyColor(EnemyColor &detect_color, const std_msgs::msg::Int32::SharedPtr &msg)
 {
-  if(msg->data == 1)
+  if(color_== 1)
   {
-    detect_color = EnemyColor::RED;
-  }else
+      
+    detector_->detect_color = EnemyColor::BLUE;
+
+  }
+  else
   {
-    detect_color = EnemyColor::BLUE;
+    detector_->detect_color = EnemyColor::RED;
   }
 }
+
 
 void ArmorDetectorNode::imageCallback(
     const sensor_msgs::msg::Image::ConstSharedPtr img_msg) {
@@ -265,7 +295,7 @@ std::unique_ptr<Detector> ArmorDetectorNode::initDetector() {
           declare_parameter("armor.max_large_center_distance", 5.0),
       .max_angle = declare_parameter("armor.max_angle", 35.0)};
 
-  auto detector = std::make_unique<Detector>(binary_thres, EnemyColor::RED,
+  auto detector = std::make_unique<Detector>(binary_thres, EnemyColor::BLUE,
                                              l_params, a_params);
 
 
@@ -341,7 +371,11 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     detector_->drawResults(img);
 
     // Draw camera center
+    // Waitting to slove!!! Where is the cam_center_ from??? Only change can_center_  to rigid half of the image width and height that the circle can be on the center!!!
+    // 中心红点错误原因 -- camera_info投影矩阵标定错误
     cv::circle(img, cam_center_, 5, cv::Scalar(255, 0, 0), 2);
+    // cv::circle(img, cv::Point(740,360), 5, cv::Scalar(255, 0, 0), 2);
+
     // Draw latency
     std::stringstream latency_ss;
     latency_ss << "Latency: " << std::fixed << std::setprecision(2) << latency
@@ -349,8 +383,16 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     auto latency_s = latency_ss.str();
     cv::putText(img, latency_s, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX,
                 1.0, cv::Scalar(0, 255, 0), 2);
+    //try{
+    //cv::namedWindow("result", cv::WINDOW_NORMAL);
+    //cv::imshow("result",img);
+    //cv::waitKey(1);
+    //}catch (...) {
+    //	FYT_ERROR("armor_detector", "Something Wrong when imshow");
+    //}
     result_img_pub_.publish(
         cv_bridge::CvImage(img_msg->header, "rgb8", img).toImageMsg());
+    
   }
 
   return armors;

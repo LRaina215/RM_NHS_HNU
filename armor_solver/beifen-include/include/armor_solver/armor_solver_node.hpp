@@ -26,11 +26,6 @@
 #include <tf2_ros/create_timer_ros.h>
 #include <tf2_ros/message_filter.h>
 #include <tf2_ros/transform_listener.h>
-#include <sensor_msgs/msg/image.hpp>
-
-#include <image_transport/image_transport.hpp>
-#include <image_transport/publisher.hpp>
-#include <image_transport/subscriber_filter.hpp>
 
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -48,9 +43,6 @@
 #include "rm_interfaces/srv/set_mode.hpp"
 #include "rm_utils/heartbeat.hpp"
 #include "rm_utils/logger/log.hpp"
-//cv
-#include <cv_bridge/cv_bridge.h>  // 用于 ROS 图像和 OpenCV 图像的转换
-#include <opencv2/opencv.hpp>     // OpenCV 核心功能
 
 namespace fyt::auto_aim {
 using tf2_filter = tf2_ros::MessageFilter<rm_interfaces::msg::Armors>;
@@ -69,15 +61,7 @@ private:
 
   void setModeCallback(const std::shared_ptr<rm_interfaces::srv::SetMode::Request> request,
                        std::shared_ptr<rm_interfaces::srv::SetMode::Response> response);
-  void processImage(const cv::Mat &image, const std_msgs::msg::Header &header);
-
-  cv::Point2f project3DTo2D(const Eigen::Vector3d& point3d);
-
-  cv::Point2f PointConvert (geometry_msgs::msg::Point odom_pre_point);
-
-  void PreImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &image);
-
-
+  
   bool debug_mode_;
 
   // Heartbeat
@@ -92,15 +76,9 @@ private:
   double r_x_, r_y_, r_z_, r_yaw_;
   double lost_time_thres_;
   std::unique_ptr<Tracker> tracker_;
-  cv::Mat camera_matrix_;
-  cv::Mat dist_coeffs_;
-  cv::Point2f camera_plane_point_;
-  std::mutex point_mutex_;
+
   // Armor Solver
-  image_transport::ImageTransport it_;
   std::unique_ptr<Solver> solver_;
-  std::vector<cv::Point3d> object_points;
-  std::vector<cv::Point2d> image_points;
 
   // Subscriber with tf2 message_filter
   std::string target_frame_;
@@ -131,14 +109,6 @@ private:
   visualization_msgs::msg::Marker armors_marker_;
   visualization_msgs::msg::Marker selection_marker_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr predicted_position_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr pre_target_point_pub_;
-
-  image_transport::Publisher vis_predict_image_pub_;
-  image_transport::Subscriber result_image_sub_;
-
-
-
 };
 
 }  // namespace fyt::auto_aim

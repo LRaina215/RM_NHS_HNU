@@ -86,7 +86,7 @@ class RobotAPI(Node):
                 time.sleep(3)
 
 
-        #初始化imu数据
+        # 初始化imu数据
         self.get_yaw = 0.0
         self.get_pitch = 0.0
         self.get_roll = 0.0
@@ -95,7 +95,7 @@ class RobotAPI(Node):
         self.robot_status = RobotStatus(self.robot_serial.status, self)
         self.robot_serial.realtime_pub = self.robot_status.realtime_callback
         self.robot_serial.serial_done = True
-        #创建tf广播器
+        # 创建tf广播器
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
         self.tf_timer = self.create_timer(0.01, self.broadcast_transform)
         # init core api
@@ -105,16 +105,14 @@ class RobotAPI(Node):
         # Init robot tx/rx/heartbeat timer
         period = 150
         self.red_blue_timer = self.create_timer(1/period, self.robot_serial.red_blue_info_callback)
-        self.imu_gimbal_timer = self.create_timer(1/period, self.robot_serial.imu_gimbal_callback)
+        self.imu_gimbal_timer = self.create_timer(1/period, self.robot_serial.imu_gimbal_callback) ###
         self.uart_timer = self.create_timer(1/period, self.robot_serial.process)
         self.uartrx_timer = self.create_timer(
             1/period, self.robot_serial.rx_function)
-        
-
         # 心跳模块
         # self.heartbeat_timer = self.create_timer(0.5, self.heartbeat)
         #
-        #self.test_timer = self.create_timer(1,self.test_callback)
+        # self.test_timer = self.create_timer(1/period,self.test_callback)
         
         
     def test_callback(self):
@@ -148,8 +146,10 @@ class RobotAPI(Node):
                 depth=20
             )
             
+            # 訂閱純視覺(無IMU)得到的雲台轉動角度信息
             self.gimbal_sub = self.create_subscription(
                 GimbalCmd, 'armor_solver/cmd_gimbal', self.gimbal_callback, qos_profile)
+            # 訂閱純視覺下的開火狀態信息
             self.barrel_sub = self.create_subscription(
                 Shooter, '/core/shooter_api', self.barrel_callback, 10)
             self.imu_tf_sub = self.create_subscription(SerialReceiveData, 'serial/receive', self.getImu_callback, 10)
@@ -188,19 +188,28 @@ class RobotAPI(Node):
 
         # pitch = math.atan2(msg.position.z, math.sqrt(msg.position.x**2 + msg.position.y**2))
         # yaw = math.atan2(msg.position.y, msg.position.x)
-
+        old_yaw = msg.yaw
+        old_pitch = msg.pitch
         mode = 1
-        #self.get_logger().info("recived data gimbal change, position.x: {}, position.y: {}, position.z: {}".format(
-         #   msg.position.x, msg.position.y, msg.position.z))
         if msg.fire_advice == False:
             self.fire_advice = 0.0
         else:
             self.fire_advice = 1.0
-
-        self.robot_serial.send_data(
+        if(msg.yaw ==0.0 and msg.pitch ==0.0):
+            self.fire_advice = 0.0
+            self.robot_serial.send_data(
             "gimbal",
             #[mode, math.degrees(msg.yaw), math.degrees(msg.pitch), math.degrees(msg.roll),0, 0, 0, 0])  #change by ye add msg.roll
-            [mode, msg.yaw, msg.pitch, self.fire_advice, 0, 0, 0])
+            [mode, old_yaw, old_pitch, self.fire_advice, 0, 0, 0])
+        else:
+            self.robot_serial.send_data(
+            "gimbal",
+            #[mode, math.degrees(msg.yaw), math.degrees(msg.pitch), math.degrees(msg.roll),0, 0, 0, 0])  #change by ye add msg.roll
+            [mode, msg.yaw, msg.pitch, self.fire_advice, 0, 0, 0])        
+        #self.get_logger().info("recived data gimbal change, position.x: {}, position.y: {}, position.z: {}".format(
+         #   msg.position.x, msg.position.y, msg.position.z))
+    
+
         #self.get_logger().info(f"sending: {msg.yaw},{msg.pitch},{msg.roll}") #change by ye     add msg.roll
         #self.get_logger().info(f"sending: {msg.yaw},{msg.pitch},{self.fire_advice}")
         self.get_logger().info(f"sending: {self.fire_advice}")

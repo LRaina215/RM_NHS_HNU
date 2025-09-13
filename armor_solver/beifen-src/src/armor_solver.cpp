@@ -27,7 +27,7 @@
 namespace fyt::auto_aim {
 Solver::Solver(std::weak_ptr<rclcpp::Node> n) : node_(n) {
   auto node = node_.lock();
-  
+
   shooting_range_w_ = node->declare_parameter("solver.shooting_range_width", 0.135);
   shooting_range_h_ = node->declare_parameter("solver.shooting_range_height", 0.405);
   max_tracking_v_yaw_ = node->declare_parameter("solver.max_tracking_v_yaw", 6.0);
@@ -42,7 +42,6 @@ Solver::Solver(std::weak_ptr<rclcpp::Node> n) : node_(n) {
   trajectory_compensator_->velocity = node->declare_parameter("solver.bullet_speed", 20.0);
   trajectory_compensator_->gravity = node->declare_parameter("solver.gravity", 9.8);
   trajectory_compensator_->resistance = node->declare_parameter("solver.resistance", 0.001);
-
 
   manual_compensator_ = std::make_unique<ManualCompensator>();
   auto angle_offset = node->declare_parameter("solver.angle_offset", std::vector<std::string>{});
@@ -88,7 +87,6 @@ rm_interfaces::msg::GimbalCmd Solver::solve(const rm_interfaces::msg::Target &ta
     throw ex;
   }
 
-
   // Use flying time to approximately predict the position of target
   Eigen::Vector3d target_position(target.position.x, target.position.y, target.position.z);
   double target_yaw = target.yaw;
@@ -99,13 +97,7 @@ rm_interfaces::msg::GimbalCmd Solver::solve(const rm_interfaces::msg::Target &ta
   target_position.y() += dt * target.velocity.y;
   target_position.z() += dt * target.velocity.z;
   target_yaw += dt * target.v_yaw;
-  /////////////////////////////////////
-  predicted_position_.x = target_position.x();
-  predicted_position_.y = target_position.y();
-  predicted_position_.z = target_position.z();
 
-
-  
   // Choose the best armor to shoot
   std::vector<Eigen::Vector3d> armor_positions = getArmorPositions(
     target_position, target_yaw, target.radius_1, target.radius_2, target.d_zc, target.d_za, target.armors_num);
@@ -154,9 +146,6 @@ rm_interfaces::msg::GimbalCmd Solver::solve(const rm_interfaces::msg::Target &ta
                                             target.armors_num);
         chosen_armor_position = armor_positions.at(idx);
         gimbal_cmd.distance = chosen_armor_position.norm();
-        predicted_position_.x = target_position.x();
-        predicted_position_.y = target_position.y();
-        predicted_position_.z = target_position.z();
         if (chosen_armor_position.norm() < 0.1) {
           throw std::runtime_error("No valid armor to shoot");
         }
@@ -166,7 +155,7 @@ rm_interfaces::msg::GimbalCmd Solver::solve(const rm_interfaces::msg::Target &ta
     }
     case TRACKING_CENTER: {
       if (std::abs(target.v_yaw) < max_tracking_v_yaw_) {
-         overflow_count_++;
+        overflow_count_++;
       } else {
         overflow_count_ = 0;
       }
@@ -187,13 +176,10 @@ rm_interfaces::msg::GimbalCmd Solver::solve(const rm_interfaces::msg::Target &ta
   double yaw_offset = angle_offset[1] * M_PI / 180;
   double cmd_pitch = pitch + pitch_offset;
   double cmd_yaw = angles::normalize_angle(yaw + yaw_offset);
-  // 0820
-  predicted_position_.x = target_position.x();
-  predicted_position_.y += -tan(yaw_offset)*predicted_position_.x;
-  predicted_position_.z += -tan(((1/45)*M_PI))*(chosen_armor_position.head(2).norm()) - tan(pitch_offset)*(chosen_armor_position.head(2).norm());
+
 
   gimbal_cmd.yaw = cmd_yaw * 180 / M_PI;
-  gimbal_cmd.pitch = cmd_pitch * 180 / M_PI - 4.0;  
+  gimbal_cmd.pitch = cmd_pitch * 180 / M_PI;  
   gimbal_cmd.yaw_diff = (cmd_yaw - rpy_[2]) * 180 / M_PI;
   gimbal_cmd.pitch_diff = (cmd_pitch - rpy_[1]) * 180 / M_PI;
 
@@ -299,6 +285,7 @@ void Solver::calcYawAndPitch(const Eigen::Vector3d &p,
   yaw = atan2(p.y(), p.x());
   pitch = atan2(p.z(), p.head(2).norm());
 
+
   if (double temp_pitch = pitch; trajectory_compensator_->compensate(p, temp_pitch)) {
     pitch = temp_pitch;
   }
@@ -314,10 +301,6 @@ std::vector<std::pair<double, double>> Solver::getTrajectory() const noexcept {
     p.second = -x * sin(rpy_[1]) + y * cos(rpy_[1]);
   }
   return trajectory;
-}
-
-geometry_msgs::msg::Point fyt::auto_aim::Solver::getPredictedPosition() const noexcept {
-  return predicted_position_;
 }
 
 }  // namespace fyt::auto_aim

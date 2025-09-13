@@ -24,4 +24,13 @@ done
 echo "Killing all remaining ROS 2 processes..."
 pkill -f ros2
 
-echo "All nodes and ROS 2 processes have been terminated."
+# 终止 autostart.sh 脚本
+AUTOSTART_PIDS=$(ps -ef | grep "autostart.sh" | grep -v grep | awk '{print $2}')
+if [ "$AUTOSTART_PIDS" != "" ]; then
+    echo "Killing autostart.sh (PIDs: $AUTOSTART_PIDS)..."
+    kill -9 $AUTOSTART_PIDS
+else
+    echo "autostart.sh is not running."
+fi
+
+echo "All nodes, ROS 2 processes, and autostart.sh have been terminated."

@@ -43,7 +43,7 @@ class RobotSerial(serial.Serial, Node):
         '''
         Node.__init__(self, "enemy_color")
         self.RB_info_pub_ = self.create_publisher(Int32, "red_blue_info", 10)
-        self.Imu_gimbal_pub_ = self.create_publisher(SerialReceiveData, "serial/receive", 10)
+        self.Imu_gimbal_pub_ = self.create_publisher(SerialReceiveData, "serial/receive", 10) ###
         self.init_device(port, baudrate, timeout_T)
         self.init_protocol(name)
         self.tx_thread = threading.Thread(target=self.run_tx_thread)
@@ -308,8 +308,9 @@ class RobotSerial(serial.Serial, Node):
         #else:
             #self.get_logger().warn("Red-blue message is None. No message published.")
 
+    # 攫取C板的IMU數據
     def imu_gimbal_callback(self):
-        msg = SerialReceiveData()
+        msg = SerialReceiveData() # 统一数据格式
         msg.yaw = float(self.imu_yaw)
         msg.pitch = float(self.imu_pitch)
         msg.roll = float(self.imu_roll)
