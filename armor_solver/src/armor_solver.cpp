@@ -24,6 +24,8 @@
 #include "rm_utils/logger/log.hpp"
 #include "rm_utils/math/utils.hpp"
 
+const double MANUAL_Z_CONST = std::tan((1.0/45.0) * M_PI); // 约 0.06992
+
 namespace fyt::auto_aim {
 Solver::Solver(std::weak_ptr<rclcpp::Node> n) : node_(n) {
   auto node = node_.lock();
@@ -187,10 +189,14 @@ rm_interfaces::msg::GimbalCmd Solver::solve(const rm_interfaces::msg::Target &ta
   double yaw_offset = angle_offset[1] * M_PI / 180;
   double cmd_pitch = pitch + pitch_offset;
   double cmd_yaw = angles::normalize_angle(yaw + yaw_offset);
+  
   // 0820
+  // 预先计算 norm()，避免重复调用
+  const double armor_norm = chosen_armor_position.head(2).norm();
   predicted_position_.x = target_position.x();
-  predicted_position_.y += -tan(yaw_offset)*predicted_position_.x;
-  predicted_position_.z += -tan(((1/45)*M_PI))*(chosen_armor_position.head(2).norm()) - tan(pitch_offset)*(chosen_armor_position.head(2).norm());
+  predicted_position_.y += -std::tan(yaw_offset) * predicted_position_.x;
+  // 将两个 tan() 相关的计算合并，并使用预计算的常量
+  predicted_position_.z -= (std::tan(pitch_offset) + MANUAL_Z_CONST) * armor_norm;
 
   gimbal_cmd.yaw = cmd_yaw * 180 / M_PI;
   gimbal_cmd.pitch = cmd_pitch * 180 / M_PI - 4.0;  

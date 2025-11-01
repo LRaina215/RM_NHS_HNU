@@ -65,7 +65,7 @@ cv::Mat NumberClassifier::extractNumber(const cv::Mat &src, const Armor &armor) 
   static const cv::Size roi_size(20, 28);
   static const cv::Size input_size(28, 28);
 
-  // Warp perspective transform
+  // Warp perspective transform 使用OpenCV将倾斜的数字面矫正
   cv::Point2f lights_vertices[4] = {
     armor.left_light.bottom, armor.left_light.top, armor.right_light.top, armor.right_light.bottom};
 
@@ -82,10 +82,10 @@ cv::Mat NumberClassifier::extractNumber(const cv::Mat &src, const Armor &armor) 
   auto rotation_matrix = cv::getPerspectiveTransform(lights_vertices, target_vertices);
   cv::warpPerspective(src, number_image, rotation_matrix, cv::Size(warp_width, warp_height));
 
-  // Get ROI
+  // Get ROI 将倾斜的数字面矫正后，选择面的感兴趣区域（一般即为中心附近，同时该附近也是数字所在处）
   number_image = number_image(cv::Rect(cv::Point((warp_width - roi_size.width) / 2, 0), roi_size));
 
-  // Binarize
+  // Binarize // 最终返回数字的二值化图像
   cv::cvtColor(number_image, number_image, cv::COLOR_RGB2GRAY);
   cv::threshold(number_image, number_image, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
   cv::resize(number_image, number_image, input_size);
@@ -94,28 +94,27 @@ cv::Mat NumberClassifier::extractNumber(const cv::Mat &src, const Armor &armor) 
 
 void NumberClassifier::classify(const cv::Mat &src, Armor &armor) noexcept {
   // Normalize
-  cv::Mat input = armor.number_img / 255.0;
+  cv::Mat input = armor.number_img / 255.0; // 将待识别的图像标准化
 
-  // Create blob from image
+  // Create blob from image 
   cv::Mat blob;
-  cv::dnn::blobFromImage(input, blob);
-
+  cv::dnn::blobFromImage(input, blob); // 将待识别图像转换成标准的Blob格式
   // Set the input blob for the neural network
-  mutex_.lock();
-  net_.setInput(blob);
+  mutex_.lock(); // 上互斥锁
+  net_.setInput(blob); // 将前面创建的blob数据作为输入喂给神经网络
 
   // Forward pass the image blob through the model
-  cv::Mat outputs = net_.forward().clone();
-  mutex_.unlock();
+  cv::Mat outputs = net_.forward().clone(); // 运行模型 + 将输出结果深拷贝一份
+  mutex_.unlock(); // 解除互斥锁
 
   // Decode the output
   double confidence;
   cv::Point class_id_point;
-  minMaxLoc(outputs.reshape(1, 1), nullptr, &confidence, nullptr, &class_id_point);
-  int label_id = class_id_point.x;
+  minMaxLoc(outputs.reshape(1, 1), nullptr, &confidence, nullptr, &class_id_point); // minMaxLoc()为OpenCV的一个函数，用于在一个矩阵中找到最小值、最大值以及它们的位置，此处的最大值即为某个数字的置信度
+  int label_id = class_id_point.x; // 上一步求得的最大值的索引即为识别出来的数字，将该数字作为图片类别id
 
   armor.confidence = confidence;
-  armor.number = class_names_[label_id];
+  armor.number = class_names_[label_id]; // 将识别出的数字类别在装甲板属性中标记出来
 
   armor.classfication_result = fmt::format("{}:{:.1f}%", armor.number, armor.confidence * 100.0);
 }

@@ -55,7 +55,7 @@ std::vector<Armor> Detector::detect(const cv::Mat &input) noexcept {
       std::execution::par, armors_.begin(), armors_.end(), [this, &input](Armor &armor) {
         // 4. Extract the number image
         armor.number_img = classifier->extractNumber(input, armor);
-        // 5. Do classification
+        // 5. Do classification 机器学习 -- 数字识别 -- 使用训练好的数据集将装甲板根据数字进行分类
         classifier->classify(input, armor);
         // 6. Correct the corners of the armor
         if (corner_corrector != nullptr) {
