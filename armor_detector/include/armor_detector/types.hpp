@@ -79,10 +79,11 @@ struct Light : public cv::RotatedRect {
     length = cv::norm(top - bottom);
     width = cv::norm(p[0] - p[1]);
 
+    // 用于判断正负？？？
     axis = top - bottom;
     axis = axis / cv::norm(axis);
 
-    // Calculate the tilt angle
+    // Calculate the tilt angle -- 计算倾斜角度
     // The angle is the angle between the light bar and the horizontal line
     tilt_angle = std::atan2(std::abs(top.x - bottom.x), std::abs(top.y - bottom.y));
     tilt_angle = tilt_angle / CV_PI * 180;

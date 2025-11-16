@@ -15,7 +15,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "armor_detector/armor_detector.hpp"
 // std
 #include <algorithm>
@@ -50,6 +49,26 @@ std::vector<Armor> Detector::detect(const cv::Mat &input) noexcept {
   armors_ = matchLights(lights_);
 
   if (!armors_.empty() && classifier != nullptr) {
+    // 11.16 LJH: 添加GPU并行运算功能
+    #ifdef ENABLE_GPU_BATCHING
+    FYT_INFO("Detector", "Using GPU Batching Path"); // 添加日志
+    // 4. & 6. 在 CPU 上并行执行所有“预处理”工作
+    std::for_each(
+      std::execution::par, armors_.begin(), armors_.end(), [this, &input](Armor &armor) {
+        // 4. 提取数字图像 (CPU 并行)
+        armor.number_img = classifier->extractNumber(input, armor);
+
+        // 6. 校正角点 (CPU 并行)
+        if (corner_corrector != nullptr) {
+          // 确保 gray_img_ 在此之前已准备好
+          // (例如在 preprocessImage 中)
+          corner_corrector->correctCorners(armor, gray_img_);
+        }
+      });
+
+    // 5. 在 GPU 上执行“一次性”批量分类
+    classifier->classify_batch(armors_);
+    #else
     // Parallel processing
     std::for_each(
       std::execution::par, armors_.begin(), armors_.end(), [this, &input](Armor &armor) {
@@ -62,6 +81,7 @@ std::vector<Armor> Detector::detect(const cv::Mat &input) noexcept {
           corner_corrector->correctCorners(armor, gray_img_);
         }
       });
+    #endif
 
     // 7. Erase the armors with ignore classes
     classifier->eraseIgnoreClasses(armors_);

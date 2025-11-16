@@ -301,8 +301,8 @@ std::unique_ptr<Detector> ArmorDetectorNode::initDetector() {
 
   
 
-  // Init classifier
-  namespace fs = std::filesystem;
+  // Init classifier 初始化数字识别功能，传入模型地址与标签地址
+  namespace fs = std::filesystem; // 使用 fs 代称 filesystem 命名空间
   fs::path model_path = utils::URLResolver::getResolvedPath(
       "package://armor_detector/model/lenet.onnx");
   fs::path label_path = utils::URLResolver::getResolvedPath(

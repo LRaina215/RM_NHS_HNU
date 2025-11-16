@@ -44,6 +44,8 @@ public:
 
   // Classify the number of the armor
   void classify(const cv::Mat &src, Armor &armor) noexcept;
+  // LJH:11.16 添加为GPU并行准备的批处理
+  void classify_batch(std::vector<Armor> & armors) noexcept;
 
   // Erase the ignore classes
   void eraseIgnoreClasses(std::vector<Armor> &armors) noexcept;

@@ -92,8 +92,9 @@ cv::Mat NumberClassifier::extractNumber(const cv::Mat &src, const Armor &armor) 
   return number_image;
 }
 
-void NumberClassifier::classify(const cv::Mat &src, Armor &armor) noexcept {
-  // Normalize
+// 11.16 LJH : 改为对装甲板图像的批处理，提高装甲板检测效率
+void NumberClassifier::classify(std::vector<Armor> &armors) noexcept 
+{
   cv::Mat input = armor.number_img / 255.0;
 
   // Create blob from image
@@ -102,7 +103,7 @@ void NumberClassifier::classify(const cv::Mat &src, Armor &armor) noexcept {
 
   // Set the input blob for the neural network
   mutex_.lock();
-  net_.setInput(blob);
+  net_.setInput(batch_blob);
 
   // Forward pass the image blob through the model
   cv::Mat outputs = net_.forward().clone();
@@ -118,6 +119,49 @@ void NumberClassifier::classify(const cv::Mat &src, Armor &armor) noexcept {
   armor.number = class_names_[label_id];
 
   armor.classfication_result = fmt::format("{}:{:.1f}%", armor.number, armor.confidence * 100.0);
+}
+
+void NumberClassifier::classify_batch(std::vector<Armor> &armors) noexcept {
+  // 如果没有装甲板，直接返回
+  if (armors.empty()) {
+    return;
+  }
+
+  // 1. 准备批处理数据
+  std::vector<cv::Mat> number_imgs;
+  number_imgs.reserve(armors.size());
+  for (const auto &armor : armors) {
+    // 归一化并添加到批处理向量中
+    number_imgs.push_back(armor.number_img / 255.0);
+  }
+
+  // 2. 将图像向量打包成一个 'Batch' Blob
+  cv::Mat batch_blob = cv::dnn::blobFromImages(number_imgs);
+
+  // 3. 执行一次推理 (只锁一次)
+  mutex_.lock();
+  net_.setInput(batch_blob);
+  // all_outputs 是一个 NxC 的 Mat，N=批大小, C=类别数
+  cv::Mat all_outputs = net_.forward().clone();
+  mutex_.unlock();
+
+  // 4. 解包并分配结果
+  for (size_t i = 0; i < armors.size(); ++i) {
+    // 获取 NxC Mat 中的第 i 行，即第 i 个图像的输出
+    cv::Mat current_output = all_outputs.row(static_cast<int>(i));
+
+    // 解码单个输出
+    double confidence;
+    cv::Point class_id_point;
+    minMaxLoc(current_output.reshape(1, 1), nullptr, &confidence, nullptr, &class_id_point);
+    int label_id = class_id_point.x;
+
+    // 赋值回对应的装甲板
+    armors[i].confidence = confidence;
+    armors[i].number = class_names_[label_id];
+    armors[i].classfication_result =
+      fmt::format("{}:{:.1f}%", armors[i].number, armors[i].confidence * 100.0);
+  }
 }
 
 void NumberClassifier::eraseIgnoreClasses(std::vector<Armor> &armors) noexcept {
