@@ -93,7 +93,7 @@ cv::Mat NumberClassifier::extractNumber(const cv::Mat &src, const Armor &armor) 
 }
 
 // 11.16 LJH : 改为对装甲板图像的批处理，提高装甲板检测效率
-void NumberClassifier::classify(std::vector<Armor> &armors) noexcept 
+void NumberClassifier::classify(const cv::Mat &src, Armor &armor) noexcept 
 {
   cv::Mat input = armor.number_img / 255.0;
 
