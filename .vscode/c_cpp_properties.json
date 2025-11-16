@@ -1,0 +1,25 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/opt/ros/foxy/include/**",
+        "/home/lraina/Desktop/Robomaster_HNU/shaobing/src/armor_detector/include/**",
+        "/home/lraina/Desktop/Robomaster_HNU/shaobing/src/armor_solver/include/**",
+        "/home/lraina/Desktop/Robomaster_HNU/shaobing/src/example_topic_rclcpp/include/**",
+        "/home/lraina/Desktop/Robomaster_HNU/shaobing/src/rm_utils/include/**",
+        "/home/lraina/Desktop/Robomaster_HNU/shaobing/src/rmoss_projectile_motion/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
